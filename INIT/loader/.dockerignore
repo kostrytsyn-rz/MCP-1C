@@ -1,0 +1,10 @@
+# Временные файлы загрузки и checkpoint (код монтируется томом ./loader:/app)
+temp_extracted/
+temp_*
+__pycache__/
+*.pyc
+*.bak
+*.bak-*
+*.zip
+Dockerfile
+.dockerignore

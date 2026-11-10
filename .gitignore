@@ -1,0 +1,41 @@
+# Environment variables (mssql-mcp/.env содержит пароль SQL)
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# IDE / OS
+.vscode/
+.idea/
+.cursor
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Данные Qdrant (большие, переносятся отдельно)
+qdrant_storage/
+
+# Кэш модели эмбеддингов (скачивается автоматически, ~2 GB)
+embeddings/models/
+
+# BSL Language Server (скачивается при сборке; кладётся вручную для офлайн-сборки)
+mcp/bsl_syntax_check/*.jar
+
+# Проекты 1С для проверки BSL (сохраняем только структуру папки)
+projects/1c/*
+!projects/1c/.gitkeep
+
+
+# Архивы
+*.zip
+*.7z
+*.rar

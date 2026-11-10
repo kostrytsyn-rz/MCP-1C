@@ -1,0 +1,18 @@
+# Парсер конфигураций 1С - зависимости
+
+# Веб-интерфейс
+streamlit>=1.28.0
+
+# Чтение контейнеров 1С (модули обычных форм из Ext/Form.bin).
+# Версия зафиксирована: используется внутренний класс v8unpack.container.Container
+v8unpack==1.2.15
+
+# Стандартные библиотеки (уже в Python, но для явности)
+# pathlib
+# json
+# csv
+# xml.etree.ElementTree
+# re
+# shutil
+# typing
+

@@ -1,0 +1,21 @@
+# Данные монтируются томами, в образ не копируются
+in_conf/
+out_conf/
+
+# Локальное окружение и мусор
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.bak
+*.bak-*
+*.cf
+*.cfe
+*.exe
+*.zip
+
+# Скрипты локального запуска (в контейнере не нужны)
+start_parser.bat
+start_parser.sh
+Dockerfile
+.dockerignore

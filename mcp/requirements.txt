@@ -1,0 +1,5 @@
+fastmcp>=4.0,<5
+starlette
+qdrant-client
+requests
+python-dotenv

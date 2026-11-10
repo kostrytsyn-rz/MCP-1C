@@ -1,0 +1,9 @@
+# PyTorch уже включен в базовый образ pytorch/pytorch с CUDA поддержкой
+# sentence-transformers >= 3.4 и transformers >= 4.51 нужны для Qwen3-Embedding
+sentence-transformers>=3.4,<6
+transformers>=4.51
+einops
+fastapi
+uvicorn
+numpy
+requests

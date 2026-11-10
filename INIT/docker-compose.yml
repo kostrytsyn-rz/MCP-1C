@@ -1,0 +1,92 @@
+# INIT - контейнери для ІНІЦІАЛІЗАЦІЇ та ДОПОВНЕННЯ даних у Qdrant.
+#
+# Qdrant і embedding-service тут НЕ запускаються: використовуються контейнери базового
+# набору MCP-1C (qdrant-1c, embedding-service у мережі mcp-1c-network). Тому спочатку
+# запустіть ..\start.bat - він же вибирає CPU/GPU-образ embedding-service.
+#
+# Запуск: start.bat  (або docker compose up -d --build)
+# Тільки parser (без базового набору): docker compose up -d --build parser
+
+name: mcp-1c-init
+
+services:
+  # ========================================
+  # Parser - розбір вивантаження конфігурації 1С та злиття з розширеннями (Streamlit UI)
+  # Не потребує Qdrant і ембеддингів: читає in_conf, пише результат у out_conf.
+  # ========================================
+  parser:
+    build:
+      context: ./parser
+      dockerfile: Dockerfile
+    image: parser-1c:latest
+    container_name: parser-1c
+    ports:
+      - "8504:8504"
+    volumes:
+      # Вхідні вивантаження (ZIP або папки з XML/BSL) - тільки читання
+      - ./parser/in_conf:/data/in_conf:ro
+      # Результат розбору: out_conf/parsed_<ім'я>/merged.zip -> завантажити в Loader
+      - ./parser/out_conf:/data/out_conf
+    restart: unless-stopped
+
+  # ========================================
+  # Loader - завантаження конфігурації 1С у Qdrant (Streamlit UI)
+  # ========================================
+  loader:
+    build:
+      context: ./loader
+      dockerfile: Dockerfile
+    image: loader-1c:latest
+    container_name: loader-1c
+    ports:
+      - "8501:8501"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - QDRANT_HOST=qdrant-1c
+      - QDRANT_PORT=6333
+      - EMBEDDING_SERVICE_URL=http://embedding-service:5000
+      - COLLECTION_OBJECTS=1c_objects_meta
+      - COLLECTION_MODULES=1c_modules_full
+      - COLLECTION_CHUNKS=1c_code_chunks
+      - COLLECTION_PROCEDURES=1c_procedures
+      - CHUNK_SIZE=1000
+      - MIN_LINES_FOR_CHUNKING=800
+      - ROW_BATCH_SIZE=100
+      - EMBEDDING_BATCH_SIZE=50
+    volumes:
+      # Код монтується, щоб правки loader.py підхоплювались без перебудови
+      - ./loader:/app
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # ========================================
+  # Syntax Loader - завантаження синтакс-помічника 1С у Qdrant (Streamlit UI)
+  # ========================================
+  syntax-loader:
+    build:
+      context: ./syntax_loader
+      dockerfile: Dockerfile
+    image: syntax-loader-1c:latest
+    container_name: syntax-loader-1c
+    ports:
+      - "8502:8501"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - QDRANT_HOST=qdrant-1c
+      - QDRANT_PORT=6333
+      - EMBEDDING_SERVICE_URL=http://embedding-service:5000
+      - COLLECTION_SYNTAX=1c_syntax_help
+      - BATCH_SIZE=100
+      - EMBEDDING_BATCH_SIZE=50
+    volumes:
+      - ./syntax_loader:/app
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+networks:
+  # Мережа базового набору MCP-1C (створюється ..\docker-compose.yml)
+  mcp-network:
+    external: true
+    name: mcp-1c-network

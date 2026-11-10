@@ -130,7 +130,7 @@ docker compose ps
 | Сервер | URL |
 |---|---|
 | MCP 1C | `http://localhost:9000/mcp` |
-| MCP SQL | `http://localhost:9001/mcp` (доступен только с этой машины) |
+| MCP SQL | `http://localhost:9001/mcp`|
 
 **Claude Code**:
 

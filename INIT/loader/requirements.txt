@@ -1,0 +1,7 @@
+einops
+qdrant-client
+pandas
+streamlit
+requests
+python-dotenv
+psutil

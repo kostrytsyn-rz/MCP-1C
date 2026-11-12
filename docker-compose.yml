@@ -1,0 +1,135 @@
+# MCP-1C - базовий набір: Qdrant + embedding-service + MCP 1C + MCP SQL.
+# Контейнери завантаження даних (parser, loader, syntax-loader) лежать в ./INIT
+# і за потреби піднімаються поверх цього набору (INIT\start.bat): вони підключаються
+# до мережі mcp-1c-network і використовують цей самий qdrant-1c та embedding-service.
+#
+# Запуск: start.bat (сам підключає docker-compose.gpu.yml, якщо є NVIDIA GPU)
+#   CPU: docker compose up -d --build                 (embeddings/, легкий образ)
+#   GPU: docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
+#                                                     (embeddings/Dockerfile.gpu, для масового завантаження)
+#
+# ВАЖЛИВО: embedding-service має використовувати ту саму модель, якою дані
+# завантажувались у Qdrant (зараз intfloat/multilingual-e5-large, 1024 виміри),
+# інакше вектори запитів будуть несумісні з векторами в колекціях.
+
+name: mcp-1c
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant-1c
+    ports:
+      - "6333:6333"
+    volumes:
+      - ./qdrant_storage:/qdrant/storage
+    environment:
+      - QDRANT__CLUSTER__ENABLED=false
+      - QDRANT__STORAGE__STRICT_FS_CHECKS=false
+      - QDRANT__STORAGE__STRICT_FS_CHECKS=false
+    healthcheck:
+      disable: true
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # Потрібен MCP 1C у рантаймі (вектор пошукового запиту) і INIT/loader, INIT/syntax-loader
+  # при завантаженні. CPU: embeddings/Dockerfile + config.json; GPU: embeddings/Dockerfile.gpu + config.gpu.json
+  # (docker-compose.gpu.yml).
+  embedding-service:
+    build:
+      context: ./embeddings
+      dockerfile: Dockerfile
+    image: embedding-service-cpu:latest
+    container_name: embedding-service
+    ports:
+      - "127.0.0.1:5000:5000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - EMBEDDING_BACKEND=${EMBEDDING_BACKEND:-}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_EMBEDDING_DIMENSIONS=${OPENAI_EMBEDDING_DIMENSIONS:-}
+    volumes:
+      - ./embeddings/config.json:/app/config.json:ro
+      - ./embeddings/models:/root/.cache/huggingface/hub
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      # Модель береться з кешу ./embeddings/models; якщо кеша немає - перше завантаження ~2 GB
+      start_period: 1800s
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  mcp-server:
+    build:
+      context: ./mcp
+      dockerfile: Dockerfile
+      args:
+        - BSL_VERSION=${BSL_VERSION:-0.29.0}
+    container_name: mcp-server-1c
+    ports:
+      - "9000:9000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - EMBEDDING_SERVICE_URL=http://embedding-service:5000
+      - COLLECTION_OBJECTS=1c_objects_meta
+      - COLLECTION_MODULES=1c_modules_full
+      - COLLECTION_CHUNKS=1c_code_chunks
+      - COLLECTION_PROCEDURES=1c_procedures
+      - COLLECTION_SYNTAX=1c_syntax_help
+      - SERVER_NAME=MCP 1C RAG Server v3.0
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=9000
+      - LOG_LEVEL=INFO
+    volumes:
+      # Код береться з образу (без ./mcp:/app), монтуються лише дані
+      - ./standards:/standards:ro
+      - ./projects/1c:/workspaces:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    depends_on:
+      qdrant:
+        condition: service_started
+      embedding-service:
+        condition: service_healthy
+
+  mssql-mcp:
+    build:
+      context: ./mssql-mcp
+      dockerfile: Dockerfile
+    image: mssql-mcp:1.0.0
+    container_name: mssql-mcp
+    env_file:
+      - path: ./mssql-mcp/.env
+        required: true
+    environment:
+      - MCP_ALLOWED_HOSTS=localhost:*,127.0.0.1:*,mssql-mcp:*
+    ports:
+      - "127.0.0.1:9001:8000"
+    healthcheck:
+      test: ["CMD", "python", "/app/healthcheck.py"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+networks:
+  mcp-network:
+    driver: bridge
+    name: mcp-1c-network

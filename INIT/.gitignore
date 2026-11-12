@@ -1,0 +1,45 @@
+# Environment variables
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+*.bak
+*.bak-*
+
+# IDE / OS
+.vscode/
+.idea/
+.cursor
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Loader: временные файлы загрузки и checkpoint
+loader/temp_extracted/
+loader/temp_*
+
+# Parser: входные выгрузки и результаты разбора (сохраняем только структуру папок)
+parser/in_conf/*
+!parser/in_conf/.gitkeep
+parser/out_conf/*
+!parser/out_conf/.gitkeep
+*.cf
+*.cfe
+
+# Архивы
+*.zip
+*.7z
+*.rar
+
+# Синтакс-помощник: исходные .hbk и выгрузка в Markdown
+*.hbk
+syntax_md/

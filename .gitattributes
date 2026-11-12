@@ -1,0 +1,11 @@
+# Нормализация переводов строк: в репозитории LF
+* text=auto
+
+# Shell-скрипты и файлы для Linux-контейнеров - всегда LF (CRLF ломает bash)
+*.sh text eol=lf
+Dockerfile* text eol=lf
+*.py text eol=lf
+
+# Windows-скрипты - всегда CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf

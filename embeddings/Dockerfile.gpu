@@ -1,0 +1,32 @@
+# GPU-образ embedding-service (PyTorch + CUDA, FP16, torch.compile) - для масового
+# завантаження даних через INIT. Підключається docker-compose.gpu.yml (start.bat робить це сам,
+# якщо знайдено nvidia-smi). CPU-варіант - Dockerfile у цій самій папці.
+FROM pytorch/pytorch:2.7.0-cuda12.8-cudnn9-runtime
+
+WORKDIR /app
+
+# gcc/g++ потрібні torch.compile (config.gpu.json: "torch_compile": true)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip
+# torch уже є в базовому образі (з CUDA)
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip check || true
+
+# Конфіг GPU (FP16, torch.compile, динамічний батч); у docker-compose.gpu.yml він ще й монтується
+COPY config.gpu.json ./config.json
+COPY embedding_service.py .
+
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 5000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD curl -f http://localhost:5000/health || exit 1
+
+CMD ["python", "embedding_service.py"]

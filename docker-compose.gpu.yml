@@ -1,0 +1,30 @@
+# GPU-оверлей: embedding-service збирається з embeddings/Dockerfile.gpu (PyTorch + CUDA, FP16)
+# з конфігом embeddings/config.gpu.json і отримує доступ до NVIDIA GPU.
+# Потрібні NVIDIA GPU + NVIDIA Container Toolkit (на Windows - Docker Desktop з WSL2 і свіжий драйвер).
+#
+# start.bat / start.sh підключають цей файл автоматично, якщо знайдено nvidia-smi:
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
+#
+# Модель у config.gpu.json та сама, що й у config.json (CPU), тому дані в Qdrant сумісні
+# з обома образами. Кеш моделі спільний: ./embeddings/models (з docker-compose.yml).
+
+services:
+  embedding-service:
+    build:
+      context: ./embeddings
+      dockerfile: Dockerfile.gpu
+    image: embedding-service-gpu:latest
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - NVIDIA_VISIBLE_DEVICES=all
+      - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+    volumes:
+      # Замінює ./embeddings/config.json (той самий target): FP16, torch.compile, динамічний батч
+      - ./embeddings/config.gpu.json:/app/config.json:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

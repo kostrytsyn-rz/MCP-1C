@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.bak
+*.hbk
+syntax_md/
+Dockerfile
+.dockerignore

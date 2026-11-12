@@ -1,0 +1,5 @@
+# Кеш моделі монтується томом (./embeddings/models), в образ не копіюється
+models/
+__pycache__/
+*.pyc
+README.md
